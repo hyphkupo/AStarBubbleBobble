@@ -29,56 +29,62 @@ void GameLevel::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
-	// 예외 처리.
-	if (deltaTime > 1.0f)
-	{
-		return;
-	}
-
-	for (Actor* a : actors)
-	{
-		Path* pt = a->As<Path>();	// 액터가 Path 클래스이면 삭제
-		if (pt)
-		{
-			a->Destroy();
-		}
-	}
-
-	if (p)
-	{
-		startNode = new Node(p->Position());
-	}
-
-	if (e1)
-	{
-		goalNode = new Node(e1->Position());
-	}
-
-	AStar astar;
-	std::vector<Node*> path = astar.FindPath(startNode, goalNode, aStarMap);
-
-	if (!path.empty())
-	{
-		for (Actor* a : actors)
-		{
-			for (Node* node : path)
-			{
-				if (node->position.x == a->Position().x && node->position.y && a->Position().y)
-				{
-					pathNode.push_back(Vector2(node->position.x, node->position.y));
-				}
-			}
-		}
-	}
-
+	//AStarPath(e1, p, aStarMap, deltaTime);
+	//AStarPath(e2, p, aStarMap, deltaTime);
+	
 	// 플레이어 버블과 적의 충돌 처리.
 	ProcessCollisionPlayerBubbleAndEnemy();
 
 	// 적과 플레이어의 충돌 처리.
 	ProcessCollisionPlayerAndEnemy();
 
-	pathNode.clear();
-	SafeDelete(goalNode);
+	if (isPlayerDead)
+	{
+		AccTimeDelta += deltaTime;
+		if (AccTimeDelta > 2.0f)
+		{
+			AccTimeDelta -= 2.0f;
+
+			Engine::Get().QuitGame();
+		}
+	}
+
+	else if (CheckGameClear())
+	{
+		AccTimeDelta += deltaTime;
+		if (AccTimeDelta > 2.0f)
+		{
+			AccTimeDelta -= 2.0f;
+
+			++gameClearNumber;
+			if (gameClearNumber == 3)
+			{
+				Engine::Get().QuitGame();
+				return;
+			}
+
+			// map 데이터 삭제
+			for (int ix = 0; ix < map.Size();)
+			{
+				map.Erase(ix);
+			}
+
+			if (stageNumber == 3)
+			{
+				p->Destroy();
+				e1->Destroy();
+			}
+
+			else
+			{
+				p->Destroy();
+				e1->Destroy();
+				e2->Destroy();
+			}
+
+			LoadNextStage();
+		}
+	}
 }
 
 void GameLevel::Draw()
@@ -96,9 +102,7 @@ void GameLevel::Draw()
 		Engine::Get().Draw(Vector2(Engine::Get().ScreenSize().x - 10, Engine::Get().ScreenSize().y - 1), "Game Over!");
 		//Engine::Get().Present();
 
-		Sleep(3000);
-
-		Engine::Get().QuitGame();
+		//Sleep(3000);
 	}
 
 	else if (CheckGameClear())
@@ -107,37 +111,9 @@ void GameLevel::Draw()
 		Engine::Get().Draw(Vector2(Engine::Get().ScreenSize().x - 11, Engine::Get().ScreenSize().y - 1), "Game Clear!");
 		//Engine::Get().Present();
 
-		Sleep(3000);
+		//Sleep(3000);
 
 		//Engine::Get().QuitGame();
-
-		++gameClearNumber;
-		if (gameClearNumber == 3)
-		{
-			Engine::Get().QuitGame();
-			return;
-		}
-		
-		// map 데이터 삭제
-		for (int ix = 0; ix < map.Size();)
-		{
-			map.Erase(ix);
-		}
-
-		if (stageNumber == 3)
-		{
-			p->Destroy();
-			e1->Destroy();
-		}
-
-		else
-		{
-			p->Destroy();
-			e1->Destroy();
-			e2->Destroy();
-		}
-		
-		LoadNextStage();
 	}
 }
 
@@ -169,6 +145,16 @@ void GameLevel::LoadNextStage()
 {
 	// 커서 감추기.
 	Engine::Get().SetCursorType(CursorType::NoCursor);
+
+	for (int i = 0; i < 32; ++i)
+	{
+		for (int j = 0; j < 13; ++j)
+		{
+			aStarMap.emplace_back('0');
+		}
+	}
+
+	//aStarMap(10, std::vector<char> (10, 0));
 
 	// 맵 파일 불러와 레벨 로드.
 	// 파일 읽기.
@@ -241,7 +227,8 @@ void GameLevel::LoadNextStage()
 			Wall* wall = new Wall(Vector2(xPosition, yPosition));
 			actors.PushBack(wall);
 			map.PushBack(wall);
-			aStarMap.emplace_back('1');
+			aStarMap[yPosition][xPosition] = '1';
+			//aStarMap.emplace_back('1');
 		}
 
 		// 맵 문자가 0이면 Ground 액터 생성
@@ -250,8 +237,8 @@ void GameLevel::LoadNextStage()
 			Ground* ground = new Ground(Vector2(xPosition, yPosition));
 			actors.PushBack(ground);
 			map.PushBack(ground);
-			//aStarMap[yPosition][xPosition] = '0';
-			aStarMap.emplace_back('0');
+			aStarMap[yPosition][xPosition] = '0';
+			//aStarMap.emplace_back('0');
 		}
 
 		// 맵 문자가 .이면 Air 액터 생성
@@ -260,7 +247,8 @@ void GameLevel::LoadNextStage()
 			Air* air = new Air(Vector2(xPosition, yPosition));
 			actors.PushBack(air);
 			map.PushBack(air);
-			aStarMap.emplace_back('.');
+			aStarMap[yPosition][xPosition] = '.';
+			//aStarMap.emplace_back('.');
 		}
 
 		++xPosition;
@@ -359,10 +347,11 @@ void GameLevel::ProcessCollisionPlayerBubbleAndEnemy()
 			if (enemy->Intersect(*bubble))
 			{
 				enemy->inBubble = true;
+				enemy->SetPositionY();
 
 				if (enemy->inBubble)
 				{
-					if (stageNumber == 3)
+					if (stageNumber == 4)
 					{
 						enemy->RedrawImage("&", Color::Yellow);
 					}
@@ -437,7 +426,7 @@ void GameLevel::ProcessCollisionPlayerAndEnemy()
 		// 적이 플레이어에게 버블을 맞은 후 플레이어와 부딪혔다면 점수 추가, 적 제거
 		if (player->Intersect(*enemy) && enemy->inBubble)
 		{
-			if (stageNumber == 3)
+			if (stageNumber == 4)
 			{
 				score += 300;
 			}
@@ -468,6 +457,64 @@ bool GameLevel::CheckGameClear()
 
 	return true;
 }
+
+//void GameLevel::AStarPath(Enemy* e, Player* p, std::vector<std::vector<char>> aStarMap, float deltaTime)
+//{
+//	pathNode.clear();
+//
+//	Path* pa = nullptr;
+//
+//	AccTimeDelta += deltaTime * speed;
+//	if (AccTimeDelta > 1.f)
+//	{
+//		AccTimeDelta -= 1.f;
+//		// TODO 이동
+//		startNode = new Node(e->Position());
+//		goalNode = new Node(p->Position());
+//
+//		AStar aStar;
+//		std::vector<Node*> path = aStar.FindPath(startNode, goalNode, aStarMap);
+//
+//		
+//		if (!path.empty())
+//		{
+//			for (Actor* a : actors)
+//			{
+//				for (Node* node : path)
+//				{
+//					if (node->position.x == a->Position().x && node->position.y && a->Position().y)
+//					{
+//						pathNode.push_back(Vector2(node->position.x, node->position.y));
+//						hasPathNode = true;
+//					}
+//				}
+//			}
+//		}
+//		
+//
+//		if (!path.empty())
+//		{
+//			/*for (Node* node : path)
+//			{
+//				pathNode.push_back(Vector2(node->position.x, node->position.y));
+//			}*/
+//			e->SetPosition(path[1]->position);
+//		}
+//
+//		//if (position.x == a.x && position.y == a.y) break;		// 충돌 시 게임 오버가 되도록 주석 처리
+//
+//		//int ax = 0;
+//		//int ay = 0;
+//		//float deltaTimeSecond = 0.0f;
+//
+//		//xPosition = path[0]->position.x;
+//		//yPosition = path[0]->position.y;
+//		//++ax;
+//		//++ay;
+//
+//		SafeDelete(goalNode);
+//	}
+//}
 
 bool GameLevel::CanPlayerMove(const Vector2& position)
 {
@@ -504,3 +551,4 @@ bool GameLevel::CanPlayerMove(const Vector2& position)
 
 	return true;
 }
+

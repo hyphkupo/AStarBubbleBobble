@@ -135,7 +135,7 @@ std::vector<Node*> AStar::FindPath(Node* startNode, Node* goalNode, const std::v
 			}
 
 			// 이동할 위치가 장애물인 경우에는 무시.
-			if (grid[newY][newX] == '1'
+			if (grid[newY][newX] == '1' || grid[newY][newX] == '0'
 				//&& newX != startNode->position.x && newY != startNode->position.y
 				//&& newX != goalNode->position.x && newY != goalNode->position.y
 				)
@@ -151,10 +151,6 @@ std::vector<Node*> AStar::FindPath(Node* startNode, Node* goalNode, const std::v
 
 			// 방문을 위한 이웃 노드 생성.
 			// 방문할 노드의 gCost, hCost, fCost 계산.
-			if (newX == 12 && newY == 3)
-			{
-				int a = 1;
-			}
 			Node* neighborNode = new Node(Vector2(newX, newY), currentNode);
 			neighborNode->gCost = currentNode->gCost + direction.cost;
 			neighborNode->hCost = CalculateHeuristic(neighborNode, goalNode);

@@ -31,12 +31,16 @@ public:
 
 	int stageNumber = 1;
 
-	std::vector<std::vector<char>> aStarMap;
+	std::vector <std::vector<char>> aStarMap;
 
-	Node* startNode = nullptr;
-	Node* goalNode = nullptr;
+	Player* p = nullptr;
+	Enemy* e1 = nullptr;
+	Enemy* e2 = nullptr;
 
-	std::vector<Vector2> pathNode;
+	//Node* startNode = nullptr;
+	//Node* goalNode = nullptr;
+
+	//std::vector<Vector2> pathNode;
 
 private:
 	// 스테이지 파일 로드 함수
@@ -50,6 +54,8 @@ private:
 
 	// 게임을 클리어했는지 확인하는 함수
 	bool CheckGameClear();
+
+	//void AStarPath(Enemy* e, Player* p, std::vector<std::vector<char>> aStarMap, float deltaTime);
 
 private:
 	// 벽/땅 액터 배열
@@ -65,11 +71,7 @@ private:
 	bool isGameClear = false;
 	int gameClearNumber = 0;
 
-	Player* p = nullptr;
-	Enemy* e1 = nullptr;
-	Enemy* e2 = nullptr;
-
-	Start* s = nullptr;
-	Player* g = nullptr;
+	float speed = 3.0f;
+	float AccTimeDelta = 0.f;
 
 };
